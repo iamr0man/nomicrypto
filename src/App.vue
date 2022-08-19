@@ -19,10 +19,26 @@
                 placeholder="Например DOGE"
               />
             </div>
+            <div
+              v-if="supposeTickers.length > 0"
+              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
+            >
+              <span
+                v-for="supposeTicker in supposeTickers"
+                :key="supposeTicker.id"
+                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
+                @click="add(supposeTicker.Symbol)"
+              >
+                {{ supposeTicker.Symbol }}
+              </span>
+            </div>
+            <div v-if="isTickerExist" class="text-sm text-red-600">
+              Такой тикер уже добавлен
+            </div>
           </div>
         </div>
         <button
-          @click="add"
+          @click="add()"
           type="button"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
@@ -137,23 +153,63 @@ export default {
     return {
       ticker: "",
       tickers: [],
+      coinList: {},
+      supposeTickers: [],
       sel: null,
       graph: [],
+      isTickerExist: false,
     };
   },
-  // 1. show tips after input, only first 4
-  // 2. autocomplete after click on tip + adding
-  // 3. validation on double
-  // 4. validation to case sensitivity
-  // 5. filter on name or symbol
-  // 6. hide error on change input
+  watch: {
+    ticker: {
+      handler(newValue) {
+        this.isTickerExist = false;
 
+        const supposedTickers = this.getSupposedTickersByTickerName(newValue);
+        this.supposeTickers = supposedTickers.slice(0, 4);
+      },
+    },
+  },
+  async mounted() {
+    this.coinList = await this.getAllCoins();
+  },
   methods: {
-    add() {
+    getSupposedTickersByTickerName(newValue) {
+      if (!newValue) {
+        return [];
+      }
+
+      return Object.entries(this.coinList).reduce((acc, curr) => {
+        const value = newValue.toLowerCase();
+        const [, coin] = curr;
+
+        const symbolMatch = coin.Symbol.toLowerCase().includes(value);
+        if (symbolMatch) {
+          acc.push(coin);
+        }
+        return acc;
+      }, []);
+    },
+    async getAllCoins() {
+      const f = await fetch(
+        `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
+      );
+      const { Data } = await f.json();
+      return Data;
+    },
+    add(supposeTicker = "") {
+      const tickerName = supposeTicker || this.ticker;
       const currentTicker = {
-        name: this.ticker,
+        name: tickerName,
         price: "-",
       };
+      this.ticker = tickerName;
+
+      const isTickerExist = this.tickers.find((v) => v.name === tickerName);
+      if (isTickerExist) {
+        this.isTickerExist = true;
+        return;
+      }
 
       this.tickers.push(currentTicker);
       setInterval(async () => {
