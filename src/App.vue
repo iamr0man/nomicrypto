@@ -69,9 +69,12 @@
             :key="t.name"
             @click="select(t)"
             :class="{
-              'border-4': selectedTicker === t
+              'border-4': selectedTicker === t,
+              'bg-white': t.price >= 0,
+              'bg-yellow': t.price === '-',
+              'bg-red-200': t.price === -1
             }"
-            class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
+            class="overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           >
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
@@ -164,7 +167,7 @@
 // [x] График сломан если везде одинаковые значения
 // [x] При удалении тикера остается выбор
 
-import { subscribeToTicker, unsubscribeFromTicker, dispose } from "@/api";
+import { subscribeToTicker, unsubscribeFromTicker } from "./api";
 
 export default {
   name: "App",
@@ -201,13 +204,11 @@ export default {
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
       this.tickers.forEach(ticker => {
-        subscribeToTicker(ticker.name, (newPrice) => this.updateTicker(ticker.name, newPrice))
-      })
+        subscribeToTicker(ticker.name, newPrice =>
+          this.updateTicker(ticker.name, newPrice)
+        );
+      });
     }
-  },
-
-  beforeUnmount () {
-    dispose()
   },
 
   computed: {
@@ -253,16 +254,22 @@ export default {
   },
 
   methods: {
-    formatPrice (price) {
-      if (price === '-') {
+    updateTicker(tickerName, price) {
+      this.tickers
+      .filter(t => t.name === tickerName)
+      .forEach(t => {
+        if (t === this.selectedTicker) {
+          this.graph.push(price);
+        }
+        t.price = price;
+      });
+    },
+
+    formatPrice(price) {
+      if (price === "-") {
         return price;
       }
-      return price > 1 ? price.toFixed(2) : price.toPrecision(2)
-    },
-    async updateTicker (tickerName, newPrice) {
-      const existTicker = this.tickers.filter(ticker => ticker.name === tickerName)[0]
-      debugger
-      existTicker.price = newPrice
+      return price > 1 ? price.toFixed(2) : price.toPrecision(2);
     },
 
     add() {
@@ -272,8 +279,11 @@ export default {
       };
 
       this.tickers = [...this.tickers, currentTicker];
+      this.ticker = "";
       this.filter = "";
-      subscribeToTicker(currentTicker.name, (newPrice) => this.updateTicker(currentTicker.name, newPrice))
+      subscribeToTicker(currentTicker.name, newPrice =>
+        this.updateTicker(currentTicker.name, newPrice)
+      );
     },
 
     select(ticker) {
