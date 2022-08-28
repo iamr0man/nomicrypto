@@ -168,7 +168,6 @@
 // [x] При удалении тикера остается выбор
 
 import { subscribeToTicker, unsubscribeFromTicker } from "./api";
-import { sendMessage } from '../worker-api.js'
 
 export default {
   name: "App",
@@ -188,8 +187,6 @@ export default {
   },
 
   created() {
-    sendMessage('hello, worker')
-
     const windowData = Object.fromEntries(
       new URL(window.location).searchParams.entries()
     );
